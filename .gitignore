@@ -1,2 +1,5 @@
 target/
 .settings/
+tst/
+.DS_Store
+.classpath
