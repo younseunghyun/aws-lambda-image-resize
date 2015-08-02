@@ -1,5 +1,5 @@
 #Lambda Function Project Metadata
-#Sun Aug 02 23:29:14 KST 2015
+#Mon Aug 03 01:19:11 KST 2015
 lastDeploymentFunctionName=ImageResizeInvokedByS3PutEvent
 lastDeploymentBucketName=raw-image
 lastDeploymentEndpoint=https\://lambda.ap-northeast-1.amazonaws.com/

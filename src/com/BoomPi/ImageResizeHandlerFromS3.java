@@ -62,8 +62,8 @@ public class ImageResizeHandlerFromS3
             return "fail to get original image";
         }
 
-        float scalingFactor = Math.min(MAX_WIDTH / sourceImage.getWidth(), MAX_HEIGHT
-            / sourceImage.getHeight());
+        float scalingFactor = Math.min(MAX_WIDTH / sourceImage.getWidth(), 
+                                        MAX_HEIGHT/ sourceImage.getHeight());
         int width = (int) (scalingFactor * sourceImage.getWidth());
         int height = (int) (scalingFactor * sourceImage.getHeight());
 
