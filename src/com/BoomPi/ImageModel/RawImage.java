@@ -1,4 +1,4 @@
-package ImageModel;
+package com.BoomPi.ImageModel;
 
 public class RawImage {
     private int width;

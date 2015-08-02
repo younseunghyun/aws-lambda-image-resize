@@ -1,3 +1,5 @@
+package com.BoomPi;
+
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,15 +13,10 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
-import ImageModel.JpegRawImage;
-import ImageModel.RawImage;
-import ImageProcess.ImageProcess;
-import ImageProcess.JpegImageProcess;
-
-
-
-
-
+import com.BoomPi.ImageModel.JpegRawImage;
+import com.BoomPi.ImageModel.RawImage;
+import com.BoomPi.ImageProcess.ImageProcess;
+import com.BoomPi.ImageProcess.JpegImageProcess;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.S3Event;
@@ -30,12 +27,30 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 
+/*Copyright 2015 jack.yun
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 public class ImageResizeHandlerFromS3
     implements
     RequestHandler<S3Event, String>
 {
+
+    //put the desired picture size and destination bucket to store resized image
     private static final float MAX_WIDTH = 400;
     private static final float MAX_HEIGHT = 400;
+    private static final String dstBucket = "resized-image";
 
     @Override
     public String handleRequest(S3Event s3Event, Context context) {
@@ -52,37 +67,20 @@ public class ImageResizeHandlerFromS3
         int width = (int) (scalingFactor * sourceImage.getWidth());
         int height = (int) (scalingFactor * sourceImage.getHeight());
 
-        ImageProcess jpegImageProcess = new JpegImageProcess((JpegRawImage) sourceImage);
+        ImageProcess imageProcess ;
+        if (sourceImage.getImageType() != null && sourceImage.getImageType().equals("jpg")) {
+            imageProcess = new JpegImageProcess((JpegRawImage) sourceImage);
+        }else{
+            imageProcess = null;
+        }
+            
 
         try {
-            return putResizeImageToS3(sourceImage, width, height, jpegImageProcess);
+            return putResizedImageToS3(imageProcess, sourceImage.getS3Key(), width, height);
         } catch (IOException e) {
             return "fail to put to s3";
         }
 
-    }
-
-    private String putResizeImageToS3(RawImage sourceImage, int width, int height, ImageProcess jpegImageProcess)
-        throws IOException
-    {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        ImageIO.write(jpegImageProcess.resize(width, height), sourceImage.getImageType(), os);
-        InputStream is = new ByteArrayInputStream(os.toByteArray());
-
-        ObjectMetadata meta = new ObjectMetadata();
-        meta.setContentLength(os.size());
-        meta.setContentType(sourceImage.getImageMime());
-
-        String dstBucket = "resized-image";
-        String dstKey = String.join("_", "resized", sourceImage.getS3Key());
-
-        AmazonS3 s3Client = new AmazonS3Client();
-
-        System.out.println("Writing to: " + dstBucket + "/" + dstKey);
-        s3Client.putObject(dstBucket, dstKey, is, meta);
-        System.out.println("Successfully resized " + sourceImage.getS3Bucket() + "/"
-            + sourceImage.getS3Key() + " and uploaded to " + dstBucket + "/" + dstKey);
-        return "Ok";
     }
 
     private RawImage getOriginalImage(S3Event s3Event)
@@ -97,8 +95,6 @@ public class ImageResizeHandlerFromS3
 
         if (!new FormatValidator(srcKey).isValid()) throw new Exception("not valid file format");
 
-        System.out.println(String.format("valid file format srcBucket : %s srcKey : %s", srcBucket, srcKey));
-
         BufferedImage srcImage = null;
         AmazonS3 s3Client = new AmazonS3Client();
 
@@ -108,15 +104,10 @@ public class ImageResizeHandlerFromS3
             srcImage = ImageIO.read(objectData);
         }
 
-        System.out.println(String.format("get file from srcBucket : %s srcKey", srcBucket, srcKey));
-
-        int srcHeight = srcImage.getHeight();
-        int srcWidth = srcImage.getWidth();
-
         // TODO implement other type of RawImage model
         JpegRawImage jpegRawImage = new JpegRawImage(
-            srcWidth,
-            srcHeight,
+            srcImage.getWidth(),
+            srcImage.getHeight(),
             srcBucket,
             srcKey,
             srcImage
@@ -124,6 +115,32 @@ public class ImageResizeHandlerFromS3
 
         return jpegRawImage;
 
+    }
+
+    private String putResizedImageToS3(
+        ImageProcess jpegImageProcess,
+        String s3ObjectKey,
+        int width,
+        int height)
+        throws IOException
+    {
+        ByteArrayOutputStream os = jpegImageProcess
+            .resize(width, height)
+            .getOutPutStream();
+        try (InputStream is = new ByteArrayInputStream(os.toByteArray());) {
+
+            ObjectMetadata meta = new ObjectMetadata();
+            meta.setContentLength(os.size());
+            meta.setContentType(jpegImageProcess.getImageMime());
+
+            String dstKey = String.join("_", "resized", s3ObjectKey);
+
+            AmazonS3 s3Client = new AmazonS3Client();
+
+            System.out.println("Writing to: " + dstBucket + "/" + dstKey);
+            s3Client.putObject(dstBucket, dstKey, is, meta);
+        }
+        return "Ok";
     }
 
     private class FormatValidator
@@ -151,7 +168,6 @@ public class ImageResizeHandlerFromS3
                 return true;
             else
                 return false;
-
         }
 
         private void setAvailImageTypeSet() {
@@ -162,5 +178,4 @@ public class ImageResizeHandlerFromS3
 
     }
 
-    
 }

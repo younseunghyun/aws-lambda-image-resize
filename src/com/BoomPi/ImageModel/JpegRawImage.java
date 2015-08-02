@@ -1,4 +1,4 @@
-package ImageModel;
+package com.BoomPi.ImageModel;
 
 import java.awt.image.BufferedImage;
 

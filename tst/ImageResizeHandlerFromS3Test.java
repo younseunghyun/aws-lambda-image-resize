@@ -4,8 +4,8 @@ import java.io.IOException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.BoomPi.ImageResizeHandlerFromS3;
 import com.amazonaws.services.lambda.runtime.Context;
-
 import com.amazonaws.services.lambda.runtime.events.S3Event;
 
 /**
